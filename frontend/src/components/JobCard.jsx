@@ -54,15 +54,16 @@ function getCompanyDomain(name) {
 
 function CompanyLogo({ name, size = 44 }) {
   const [stage, setStage] = useState('clearbit');
-  const domain = getCompanyDomain(name);
-  const color = getCompanyColor(name);
+  const safeName = name ? String(name) : 'Unknown';
+  const domain = getCompanyDomain(safeName);
+  const color = getCompanyColor(safeName);
   const px = `${size}px`;
 
   if (!domain || stage === 'letter') {
     return (
       <div className="rounded-xl flex items-center justify-center shrink-0 text-base font-black"
         style={{ width: px, height: px, background: `${color}18`, border: `1px solid ${color}35`, color }}>
-        {name.charAt(0).toUpperCase()}
+        {safeName.charAt(0).toUpperCase()}
       </div>
     );
   }
@@ -74,7 +75,7 @@ function CompanyLogo({ name, size = 44 }) {
   return (
     <div className="rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
       style={{ width: px, height: px, background: '#fff', border: '1px solid rgba(0,0,0,0.09)', padding: stage === 'clearbit' ? '4px' : '6px' }}>
-      <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      <img src={src} alt={safeName} style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         onError={() => setStage(stage === 'clearbit' ? 'ddg' : 'letter')} loading="lazy" />
     </div>
   );

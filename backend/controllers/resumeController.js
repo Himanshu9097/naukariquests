@@ -136,7 +136,12 @@ const analyzeResume = async (req, res) => {
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' }
     });
-    const result = JSON.parse(comp.choices[0].message.content);
+    
+    let raw = comp.choices[0].message.content || '{}';
+    raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}') + 1;
+    const result = JSON.parse(start >= 0 ? raw.slice(start, end) : raw);
     
     result.ats_score = calculateATSScore(text, targetJob, result);
     result.section_tips = getAnalysisDetails(text);
