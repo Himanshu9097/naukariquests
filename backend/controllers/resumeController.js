@@ -1,23 +1,26 @@
-const OpenAI = require('openai');
 const multer = require('multer');
-const mammoth = require('mammoth');
-const pdfParse = require('pdf-parse');
 const Job = require('../models/Job');
 const ResumeAnalysis = require('../models/ResumeAnalysis');
-const ImageKit = require('imagekit');
 
-const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
-});
-
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
+// Lazy factories — avoids Vercel cold-start crash from missing env vars
+function getAI() {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN || 'placeholder',
+  });
+}
+function getImageKit() {
+  const ImageKit = require('imagekit');
+  return new ImageKit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+  });
+}
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
 
 const COURSE_DB = {
   'Data Science': [

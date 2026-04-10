@@ -1,9 +1,11 @@
-const OpenAI = require('openai');
-
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
+// Lazy AI — prevents crash if CF_API_TOKEN is missing at startup
+function getAI() {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN || 'placeholder',
+  });
+}
 
 const SYSTEM_PROMPT = `You are NaukriQuest AI Career Coach — India's most insightful tech career advisor for 2025.
 
@@ -38,6 +40,7 @@ const sendMessage = async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   try {
+    const ai = getAI();
     const chatMessages = [
       { role: 'system', content: SYSTEM_PROMPT + `\n\nCRITICAL INSTRUCTION: You MUST speak, reply, and formulate your response entirely in ${language}. Do not use English unless the requested language is English.` },
       ...messages.slice(-10).map((m) => ({ role: m.role, content: m.content })),

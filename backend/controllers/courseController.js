@@ -1,9 +1,12 @@
-const OpenAI = require('openai');
+// Lazy AI — prevents crash if CF_API_TOKEN is missing at startup
+function getAI() {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN || 'placeholder',
+  });
+}
 
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
 function getCourseUrl(provider, title, interest) {
   const q = encodeURIComponent(interest);
   const tq = encodeURIComponent(title);
@@ -74,6 +77,7 @@ Return ONLY valid JSON in this exact structure, starting with {:
 }`;
 
   try {
+    const ai = getAI();
     const completion = await ai.chat.completions.create({
       model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       messages: [{ role: 'user', content: prompt }],

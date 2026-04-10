@@ -1,14 +1,18 @@
 const Job = require('../models/Job');
-const OpenAI = require('openai');
 
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
+// Lazy AI client — only instantiated when used to avoid Vercel startup crash
+function getAI() {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN || 'placeholder',
+  });
+}
 
 // Use Llama 3.3 70B to parse user query and GENERATE mock jobs from external platforms
 // Use Llama 3.3 70B to parse user query into structured search terms
 async function parseQueryWithAI(q) {
+  const ai = getAI();
   try {
     const comp = await ai.chat.completions.create({
       model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',

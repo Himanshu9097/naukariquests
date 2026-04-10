@@ -1,9 +1,11 @@
-const OpenAI = require('openai');
-
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
+// Lazy AI — prevents crash if CF_API_TOKEN is missing at startup
+function getAI() {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN || 'placeholder',
+  });
+}
 
 // @desc  Generate cover letter / email / talking points (SSE streaming)
 // @route POST /api/apply/generate
@@ -49,6 +51,7 @@ Generate application content as a JSON object. Return ONLY the JSON object.
   res.setHeader('Connection', 'keep-alive');
 
   try {
+    const ai = getAI();
     const stream = await ai.chat.completions.create({
       model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       messages: [
