@@ -61,7 +61,9 @@ export default function NavBar() {
     baseLinks.push({ href: '/recruiter', icon: <Shield size={13} />, mIcon: <Shield size={14} />, label: 'Dashboard', mLabel: 'Recruiter Dashboard', color: '#bf5af2' });
   } else if (userRole === 'candidate') {
     baseLinks.push({ href: '/candidate', icon: <UserCircle size={13} />, mIcon: <UserCircle size={14} />, label: 'Dashboard', mLabel: 'Candidate Dashboard', color: '#00d4ff' });
+    baseLinks.push({ href: '/profile', icon: <User size={13} />, mIcon: <User size={14} />, label: 'Profile', mLabel: 'My Profile & Alerts', color: '#30d158' });
   }
+
 
   return (
     <nav className="relative z-50 apple-nav border-b" style={{ borderColor: navBorder }}>

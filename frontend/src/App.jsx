@@ -10,6 +10,7 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import RecruiterDashboard from '@/pages/RecruiterDashboard';
 import CandidateDashboard from '@/pages/CandidateDashboard';
 import LoginPage from '@/pages/LoginPage';
+import ProfilePage from '@/pages/ProfilePage';
 import NotFound from '@/pages/NotFound';
 import NavBar from '@/components/NavBar';
 import AIChatbot from '@/components/AIChatbot';
@@ -28,6 +29,7 @@ function AppRouter() {
       <Route path="/recruiter" component={RecruiterDashboard} />
       <Route path="/candidate" component={CandidateDashboard} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );

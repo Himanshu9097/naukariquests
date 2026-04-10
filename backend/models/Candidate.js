@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
+const NotificationSchema = new mongoose.Schema({
+  message: { type: String },
+  jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job' },
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+
 const CandidateSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   name: { type: String },
   email: { type: String },
   phone: { type: String },
@@ -12,6 +20,10 @@ const CandidateSchema = new mongoose.Schema({
   github: { type: String },
   education: { type: String },
   ats_score: { type: Number },
+  resumeUrl: { type: String },       // ImageKit URL
+  resumeText: { type: String },      // Extracted raw text for matching
+  jobFitScore: { type: Number, default: 0 },
+  notifications: [NotificationSchema],
   createdAt: { type: Date, default: Date.now },
 });
 
