@@ -69,29 +69,53 @@ const uploadResume = [
       // 1. Extract text
       let text = '';
       const mime = req.file.mimetype;
-      const name = req.file.originalname.toLowerCase();
-      if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+      const fname = req.file.originalname.toLowerCase();
+      if (mime === 'application/pdf' || fname.endsWith('.pdf')) {
         const data = await pdfParse(req.file.buffer);
         text = data.text;
-      } else if (mime.includes('word') || name.endsWith('.docx') || name.endsWith('.doc')) {
+      } else if (mime.includes('word') || fname.endsWith('.docx') || fname.endsWith('.doc')) {
         const doc = await mammoth.extractRawText({ buffer: req.file.buffer });
         text = doc.value;
       } else {
         text = req.file.buffer.toString('utf-8');
       }
 
-      // 2. Upload to ImageKit
-      const upload = await imagekit.upload({
+      if (!text || text.trim().length < 30) {
+        return res.status(400).json({ error: 'Could not extract readable text from file. Please try a text-based PDF or DOCX.' });
+      }
+
+      // 2. Upload to ImageKit in parallel (no need to await before parsing)
+      const uploadPromise = imagekit.upload({
         file: req.file.buffer,
         fileName: req.file.originalname,
         folder: '/resumes',
       });
 
-      // 3. Parse with AI to extract structured profile data
-      const prompt = `Extract structured info from this resume. Return JSON:
-{ "name": "str", "email": "str", "phone": "str", "title": "str", "experience": "str", "skills": ["str"], "summary": "str", "education": "str" }
-Resume:
-${text.slice(0, 4000)}`;
+      // 3. Improved AI prompt — detailed extraction with explicit instructions
+      const prompt = `You are a resume parser. Extract ALL information precisely from the resume below.
+
+Return ONLY valid JSON with these exact keys:
+{
+  "name": "Full name of candidate (string)",
+  "email": "Email address (string)",
+  "phone": "Phone number with country code if present (string)",
+  "title": "Current or most recent job title / target role (string, e.g. 'Full Stack Developer', 'Data Scientist')",
+  "experience": "Total years of experience as a concise string (e.g. '3 years', 'Fresher', '2+ years')",
+  "skills": ["list", "of", "technical", "skills", "only — no soft skills, keep each under 25 chars"],
+  "summary": "2-3 sentence professional summary or objective from the resume (string)",
+  "education": "Highest degree and institution (e.g. 'B.Tech CSE - IIT Delhi, 2022')",
+  "linkedin": "LinkedIn URL if present, else empty string",
+  "github": "GitHub URL if present, else empty string"
+}
+
+Rules:
+- skills array MUST contain individual skills, NOT sentences. Max 20 skills.
+- If a field is not found, return empty string "" (never return null).
+- Do NOT add any keys other than the ones listed above.
+- Return nothing except the JSON object.
+
+Resume text:
+${text.slice(0, 5000)}`;
 
       const comp = await ai.chat.completions.create({
         model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
@@ -100,37 +124,73 @@ ${text.slice(0, 4000)}`;
       });
 
       let raw = comp.choices[0].message.content || '{}';
-      raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Strip markdown code fences if present
+      raw = raw.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
       const start = raw.indexOf('{');
       const end = raw.lastIndexOf('}') + 1;
-      const parsed = JSON.parse(start >= 0 ? raw.slice(start, end) : raw);
+      let parsed = {};
+      try {
+        parsed = JSON.parse(start >= 0 ? raw.slice(start, end) : raw);
+      } catch (_) {
+        console.warn('AI JSON parse failed, using empty object');
+      }
 
-      // 4. Update name on User model if found
-      if (parsed.name) await User.findByIdAndUpdate(userId, { name: parsed.name });
+      // Clean and normalize skills — remove empty strings, duplicates, long sentences
+      const cleanSkills = [...new Set(
+        (Array.isArray(parsed.skills) ? parsed.skills : [])
+          .map(s => String(s).trim())
+          .filter(s => s.length > 0 && s.length <= 40 && !s.includes('.') && !s.toLowerCase().startsWith('experience'))
+      )];
 
-      // 5. Upsert Candidate with all extracted data + resumeUrl
+      // Get existing candidate to merge (don't overwrite good data with empty AI output)
+      const existingCandidate = await Candidate.findOne({ userId });
+
+      const mergedData = {
+        userId,
+        name:       parsed.name       || existingCandidate?.name       || '',
+        email:      parsed.email      || existingCandidate?.email      || '',
+        phone:      parsed.phone      || existingCandidate?.phone      || '',
+        title:      parsed.title      || existingCandidate?.title      || '',
+        experience: parsed.experience || existingCandidate?.experience || '',
+        skills:     cleanSkills.length > 0 ? cleanSkills : (existingCandidate?.skills || []),
+        summary:    parsed.summary    || existingCandidate?.summary    || '',
+        education:  parsed.education  || existingCandidate?.education  || '',
+        linkedin:   parsed.linkedin   || existingCandidate?.linkedin   || '',
+        github:     parsed.github     || existingCandidate?.github     || '',
+        resumeText: text.slice(0, 8000),
+      };
+
+      // 4. Await ImageKit upload
+      let resumeUrl = existingCandidate?.resumeUrl || '';
+      try {
+        const uploaded = await uploadPromise;
+        resumeUrl = uploaded.url;
+        mergedData.resumeUrl = resumeUrl;
+      } catch (ikErr) {
+        console.warn('ImageKit upload failed:', ikErr.message);
+      }
+
+      // 5. Update User name
+      if (mergedData.name) {
+        await User.findByIdAndUpdate(userId, { name: mergedData.name });
+      }
+
+      // 6. Upsert Candidate
       const candidate = await Candidate.findOneAndUpdate(
         { userId },
-        {
-          userId,
-          name: parsed.name,
-          email: parsed.email,
-          phone: parsed.phone,
-          title: parsed.title,
-          experience: parsed.experience,
-          skills: parsed.skills || [],
-          summary: parsed.summary,
-          education: parsed.education,
-          resumeUrl: upload.url,
-          resumeText: text.slice(0, 8000),
-        },
+        { $set: mergedData },
         { new: true, upsert: true }
       );
 
-      res.json({ message: 'Resume uploaded & profile auto-filled!', resumeUrl: upload.url, candidate });
+      res.json({
+        message: 'Resume uploaded & profile auto-filled!',
+        resumeUrl,
+        fieldsExtracted: Object.keys(parsed).filter(k => parsed[k] && (Array.isArray(parsed[k]) ? parsed[k].length > 0 : String(parsed[k]).trim() !== '')),
+        candidate,
+      });
     } catch (e) {
       console.error('Resume upload error:', e);
-      res.status(500).json({ error: 'Resume processing failed' });
+      res.status(500).json({ error: 'Resume processing failed: ' + e.message });
     }
   }
 ];

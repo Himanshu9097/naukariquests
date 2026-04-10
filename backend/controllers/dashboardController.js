@@ -28,43 +28,11 @@ const createRecruiterJob = async (req, res) => {
     const saved = await job.save();
     res.status(201).json(saved);
 
-    // ── Fire-and-forget: notify all candidates ──────────────────────────────
-    setImmediate(async () => {
-      try {
-        const { sendJobNotificationEmail } = require('../services/emailService');
-        const Candidate = require('../models/Candidate');
-        const User = require('../models/User');
-
-        const candidates = await Candidate.find({ email: { $exists: true, $ne: '' } });
-
-        for (const candidate of candidates) {
-          // In-app notification
-          await Candidate.findByIdAndUpdate(candidate._id, {
-            $push: {
-              notifications: {
-                message: `New job posted: "${saved.title}" at ${saved.company}`,
-                jobId: saved._id,
-                read: false,
-                createdAt: new Date(),
-              }
-            }
-          });
-
-          // Email notification
-          if (candidate.email) {
-            await sendJobNotificationEmail({
-              to: candidate.email,
-              candidateName: candidate.name,
-              job: saved,
-            });
-          }
-        }
-        console.log(`✅ Notified ${candidates.length} candidates about "${saved.title}"`);
-      } catch (notifyErr) {
-        console.error('Notification blast failed:', notifyErr.message);
-      }
-    });
+    // Fire-and-forget: blast email + in-app notifications to ALL candidates
+    const { blastJobNotification } = require('../services/emailService');
+    setImmediate(() => blastJobNotification(saved));
   } catch (e) {
+    console.error('Create job error:', e.message);
     res.status(500).json({ error: 'Failed to create job' });
   }
 };

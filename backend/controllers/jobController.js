@@ -97,10 +97,11 @@ const searchJobs = async (req, res) => {
 
         // Seed our MongoDB with the global results so pagination is instant
         if (externalJobs.length > 0) {
+           const { blastJobNotification } = require('../services/emailService');
            for (let item of externalJobs.slice(0, 20)) {
              const existing = await Job.findOne({ title: item.title, company: item.company });
              if (!existing) {
-               await Job.create({
+               const newJob = await Job.create({
                   title: item.title,
                   company: item.company,
                   recruiterId: new (require('mongoose').Types.ObjectId)(),
@@ -112,6 +113,8 @@ const searchJobs = async (req, res) => {
                   createdAt: new Date(), 
                   apply_link: item.jobUrl || ""
                });
+               // Notify all candidates about this new global job (fire-and-forget)
+               setImmediate(() => blastJobNotification(newJob));
              }
            }
         }
