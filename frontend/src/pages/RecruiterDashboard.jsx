@@ -195,6 +195,7 @@ export default function RecruiterDashboard() {
   );
 
   return (
+    <>
     <div className="min-h-screen pb-24 relative" style={{ background: isDark ? '#000' : '#f0f4f8' }}>
       {/* Top Banner Gradient */}
       <div className="absolute top-0 left-0 w-full h-96 opacity-10 pointer-events-none" 
@@ -607,5 +608,123 @@ export default function RecruiterDashboard() {
         )}
       </div>
     </div>
+
+      {/* ── CANDIDATE PROFILE MODAL ──────────────────────────────────────────── */}
+      {selectedCandidate && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => { setSelectedCandidate(null); setCandidateDetails(null); }}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col relative"
+            style={{ background: isDark ? '#0f1423' : '#fff', border: `1px solid ${SBR}`, maxHeight: '88vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-6 py-5 border-b flex items-center justify-between shrink-0" style={{ borderColor: SBR }}>
+              <h2 className="text-xl font-black" style={{ color: T }}>Candidate Profile</h2>
+              <button onClick={() => { setSelectedCandidate(null); setCandidateDetails(null); }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-black/10 dark:hover:bg-white/10">
+                <X size={20} style={{ color: T }} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              {loadingCandidate ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <Loader2 size={36} className="animate-spin" style={{ color: '#00d4ff' }} />
+                  <p className="text-sm font-bold" style={{ color: TM }}>Loading profile...</p>
+                </div>
+              ) : candidateDetails ? (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-xl shrink-0"
+                         style={{ background: 'linear-gradient(135deg, #00d4ff, #0055ff)' }}>
+                      {(candidateDetails.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black leading-tight" style={{ color: T }}>{candidateDetails.name || '—'}</h3>
+                      <p className="text-sm font-bold mt-1" style={{ color: '#00d4ff' }}>{candidateDetails.title || 'Applicant'}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { label: 'Email', value: candidateDetails.email },
+                      { label: 'Phone', value: candidateDetails.phone },
+                      { label: 'Experience', value: candidateDetails.experience },
+                      { label: 'Education', value: candidateDetails.education },
+                    ].filter(f => f.value).map(({ label, value }) => (
+                      <div key={label} className="p-4 rounded-2xl" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${SBR}` }}>
+                        <p className="text-[10px] uppercase tracking-widest font-black mb-1" style={{ color: TM }}>{label}</p>
+                        <p className="text-sm font-semibold break-all" style={{ color: T }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {candidateDetails.summary && (
+                    <div className="p-4 rounded-2xl" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb', border: `1px solid ${SBR}` }}>
+                      <p className="text-[10px] uppercase tracking-widest font-black mb-2" style={{ color: TM }}>Professional Summary</p>
+                      <p className="text-sm leading-relaxed" style={{ color: T }}>{candidateDetails.summary}</p>
+                    </div>
+                  )}
+
+                  {candidateDetails.skills?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-black mb-2" style={{ color: TM }}>Skills</p>
+                      <div className="flex flex-wrap gap-2">
+                        {candidateDetails.skills.map(s => (
+                          <span key={s} className="px-3 py-1 text-xs font-bold rounded-lg"
+                                style={{ background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)' }}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(candidateDetails.linkedin || candidateDetails.github) && (
+                    <div className="flex gap-3">
+                      {candidateDetails.linkedin && (
+                        <a href={candidateDetails.linkedin} target="_blank" rel="noreferrer"
+                           className="text-xs font-bold px-4 py-2 rounded-xl"
+                           style={{ background: 'rgba(0,119,181,0.1)', color: '#0077b5', border: '1px solid rgba(0,119,181,0.2)' }}>
+                          🔗 LinkedIn
+                        </a>
+                      )}
+                      {candidateDetails.github && (
+                        <a href={candidateDetails.github} target="_blank" rel="noreferrer"
+                           className="text-xs font-bold px-4 py-2 rounded-xl"
+                           style={{ background: 'rgba(191,90,242,0.1)', color: '#bf5af2', border: '1px solid rgba(191,90,242,0.2)' }}>
+                          🐙 GitHub
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {candidateDetails.resumeUrl ? (
+                    <a href={candidateDetails.resumeUrl} target="_blank" rel="noreferrer"
+                       className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-black text-sm text-white transition-all hover:scale-[1.02]"
+                       style={{ background: 'linear-gradient(135deg, #0055ff, #00d4ff)' }}>
+                      <FileText size={16} /> View Full Resume
+                    </a>
+                  ) : (
+                    <div className="flex items-center justify-center w-full py-3.5 rounded-2xl font-bold text-sm"
+                         style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb', color: TM, border: `1px solid ${SBR}` }}>
+                      No resume uploaded yet
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-16" style={{ color: TM }}>
+                  <Users size={40} className="mx-auto mb-4 opacity-20" />
+                  <p className="font-bold">Profile not found</p>
+                  <p className="text-xs mt-1">This candidate hasn't completed their profile yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

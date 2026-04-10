@@ -74,43 +74,49 @@ const getApplications = async (req, res) => {
 const updateApplicationStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const app = await Application.findByIdAndUpdate(req.params.id, { status }, { new: true })
-      .populate('jobId', 'title company')
-      .populate('candidateId', 'name email');
+
+    // Step 1: update the document
+    let app = await Application.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+
+    // Step 2: explicit populate (more reliable than chaining)
+    await app.populate('jobId', 'title company');
+    await app.populate('candidateId', 'name email');
 
     res.json(app);
 
-    // Run notifications asynchronously
-    if (app && app.candidateId && app.jobId) {
+    console.log(`🔔 Status changed → ${status} | candidate: ${app.candidateId?.email} | job: ${app.jobId?.title}`);
+
+    // Fire-and-forget notifications
+    if (app.candidateId?.email && app.jobId && status !== 'applied') {
       setImmediate(async () => {
         try {
           const { sendStatusUpdateEmail } = require('../services/emailService');
           const Candidate = require('../models/Candidate');
-          
-          // In-app notification
-          await Candidate.findOneAndUpdate(
-            { $or: [{ userId: app.candidateId._id }, { email: app.candidateId.email }] },
-            {
-              $push: {
-                notifications: {
-                  message: `Your application status for "${app.jobId.title}" at ${app.jobId.company} has been updated to ${status}.`,
-                  jobId: app.jobId._id,
-                  read: false,
-                  createdAt: new Date(),
+
+          // Email notification
+          await sendStatusUpdateEmail({
+            to: app.candidateId.email,
+            candidateName: app.candidateId.name,
+            jobTitle: app.jobId.title,
+            companyName: app.jobId.company,
+            newStatus: status,
+          });
+
+          // In-app notification (best effort)
+          if (app.candidateId._id) {
+            await Candidate.findOneAndUpdate(
+              { userId: app.candidateId._id },
+              {
+                $push: {
+                  notifications: {
+                    message: `Your application for "${app.jobId.title}" at ${app.jobId.company} has been moved to ${status}.`,
+                    jobId: app.jobId._id,
+                    read: false,
+                    createdAt: new Date(),
+                  }
                 }
               }
-            }
-          );
-
-          // Email
-          if (app.candidateId.email && status !== 'applied') {
-            await sendStatusUpdateEmail({
-              to: app.candidateId.email,
-              candidateName: app.candidateId.name,
-              jobTitle: app.jobId.title,
-              companyName: app.jobId.company,
-              newStatus: status
-            });
           }
         } catch (notifErr) {
           console.error('Status update notification failed:', notifErr.message);
