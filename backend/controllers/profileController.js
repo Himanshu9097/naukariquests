@@ -1,22 +1,25 @@
 const multer = require('multer');
-const mammoth = require('mammoth');
-const pdfParse = require('pdf-parse');
-const ImageKit = require('imagekit');
-const OpenAI = require('openai');
 const Candidate = require('../models/Candidate');
 const User = require('../models/User');
 const Job = require('../models/Job');
 
-const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
-});
+// Lazy factories — instantiate only when used, not at module load (avoids Vercel cold-start crash)
+const getImageKit = () => {
+  const ImageKit = require('imagekit');
+  return new ImageKit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+  });
+};
 
-const ai = new OpenAI({
-  baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
-  apiKey: process.env.CF_API_TOKEN,
-});
+const getAI = () => {
+  const OpenAI = require('openai');
+  return new OpenAI({
+    baseURL: `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`,
+    apiKey: process.env.CF_API_TOKEN,
+  });
+};
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -66,14 +69,16 @@ const uploadResume = [
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
 
     try {
-      // 1. Extract text
+      // 1. Extract text (lazy-require heavy libs so server startup doesn't crash)
       let text = '';
       const mime = req.file.mimetype;
       const fname = req.file.originalname.toLowerCase();
       if (mime === 'application/pdf' || fname.endsWith('.pdf')) {
+        const pdfParse = require('pdf-parse');
         const data = await pdfParse(req.file.buffer);
         text = data.text;
       } else if (mime.includes('word') || fname.endsWith('.docx') || fname.endsWith('.doc')) {
+        const mammoth = require('mammoth');
         const doc = await mammoth.extractRawText({ buffer: req.file.buffer });
         text = doc.value;
       } else {
@@ -84,7 +89,8 @@ const uploadResume = [
         return res.status(400).json({ error: 'Could not extract readable text from file. Please try a text-based PDF or DOCX.' });
       }
 
-      // 2. Upload to ImageKit in parallel (no need to await before parsing)
+      // 2. Upload to ImageKit in parallel
+      const imagekit = getImageKit();
       const uploadPromise = imagekit.upload({
         file: req.file.buffer,
         fileName: req.file.originalname,
@@ -117,6 +123,7 @@ Rules:
 Resume text:
 ${text.slice(0, 5000)}`;
 
+      const ai = getAI();
       const comp = await ai.chat.completions.create({
         model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
         messages: [{ role: 'user', content: prompt }],
