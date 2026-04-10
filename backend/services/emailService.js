@@ -26,26 +26,25 @@ const sendJobNotificationEmail = async ({ to, candidateName, job }) => {
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#060c1a;color:#fff;padding:0;margin:0}
-.outer{background:#060c1a;padding:32px 16px}
-.card{max-width:560px;margin:0 auto;background:linear-gradient(145deg,#0f1626,#1a2235);border-radius:24px;border:1px solid rgba(0,212,255,0.18);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
-.header{background:linear-gradient(135deg,#0055ff 0%,#00d4ff 100%);padding:28px 32px 24px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f4f6;color:#111827;padding:0;margin:0}
+.outer{background:#f3f4f6;padding:32px 16px}
+.card{max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.05)}
+.header{background:#0055ff;padding:28px 32px 24px}
 .header-icon{width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
-.header h1{font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#fff}
-.header p{margin-top:6px;font-size:13px;color:rgba(255,255,255,0.82)}
-.body{padding:28px 32px}
-.greeting{font-size:15px;line-height:1.6;color:rgba(255,255,255,0.8);margin-bottom:22px}
-.greeting strong{color:#fff}
-.job-card{background:rgba(255,255,255,0.04);border:1px solid rgba(0,212,255,0.2);border-radius:16px;padding:22px;margin-bottom:22px;position:relative;overflow:hidden}
-.job-card-bar{position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#0055ff,#00d4ff)}
-.job-title{font-size:18px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:4px}
-.company-name{font-size:13px;color:#00d4ff;font-weight:700;margin-bottom:16px}
+.header h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;margin:0}
+.header p{margin-top:6px;font-size:14px;color:rgba(255,255,255,0.9)}
+.body{padding:32px}
+.greeting{font-size:16px;line-height:1.6;color:#374151;margin-bottom:24px}
+.greeting strong{color:#111827}
+.job-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-bottom:24px;border-left:4px solid #0055ff}
+.job-title{font-size:18px;font-weight:800;color:#111827;margin-bottom:6px}
+.company-name{font-size:14px;color:#0055ff;font-weight:700;margin-bottom:12px}
 .tags{display:flex;flex-wrap:wrap;gap:8px}
-.tag{font-size:11px;color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.07);padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.1)}
-.cta{display:block;text-align:center;background:linear-gradient(135deg,#0055ff,#00d4ff);color:#fff;text-decoration:none;font-weight:900;font-size:14px;padding:15px 28px;border-radius:14px;letter-spacing:0.2px}
-.divider{height:1px;background:rgba(255,255,255,0.06);margin:24px 0}
-.footer{padding:0 32px 28px;font-size:11px;color:rgba(255,255,255,0.28);text-align:center;line-height:1.8}
-.footer a{color:#00d4ff;text-decoration:none}
+.tag{font-size:12px;color:#4b5563;background:#e5e7eb;padding:4px 10px;border-radius:6px;font-weight:500;}
+.cta{display:block;text-align:center;background:#0055ff;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:8px;}
+.divider{height:1px;background:#e5e7eb;margin:24px 0}
+.footer{padding:0 32px 28px;font-size:12px;color:#6b7280;text-align:center;line-height:1.6}
+.footer a{color:#0055ff;text-decoration:none}
 </style>
 </head>
 <body>
@@ -59,31 +58,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="body">
     <p class="greeting">Hey <strong>${candidateName || 'there'}</strong> 👋,<br/>A new job has been posted that matches your profile. Don't miss out!</p>
     <div class="job-card">
-      <div class="job-card-bar"></div>
       <div class="job-title">${job.title}</div>
       <div class="company-name">${job.company}</div>
       <div class="tags">
         <span class="tag">📍 ${job.location || 'Remote'}</span>
         <span class="tag">💼 ${job.type || 'Full-time'}</span>
         ${job.salary && job.salary !== 'Not Disclosed' ? `<span class="tag">💰 ${job.salary}</span>` : ''}
-        ${job.apply_link ? '<span class="tag">🔗 LinkedIn Global</span>' : '<span class="tag">🏢 NaukriQuest</span>'}
       </div>
     </div>
     <a href="${applyLink}" class="cta">🚀 View &amp; Apply Now</a>
     <div class="divider"></div>
-    <p style="font-size:12px;color:rgba(255,255,255,0.4);text-align:center">Log in to see your full personalized recommendations.</p>
+    <p style="font-size:13px;color:#6b7280;text-align:center">Log in to see your full personalized recommendations.</p>
   </div>
   <div class="footer">
     You're receiving this as a registered NaukriQuest candidate.<br/>
-    <a href="https://naukariquest.vercel.app">naukariquest.vercel.app</a> · 
-    <a href="https://naukariquest.vercel.app/profile">Manage Notifications</a>
+    <a href="https://naukariquest.vercel.app">naukariquest.vercel.app</a>
   </div>
 </div>
 </div>
 </body></html>`;
 
     await transporter.sendMail({
-      from: `"NaukriQuest AI ⚡" <${process.env.EMAIL_USER}>`,
+      from: `"NaukriQuest Notifications" <${process.env.EMAIL_USER}>`,
       to,
       subject: `⚡ New Job: ${job.title} at ${job.company}`,
       html,
@@ -92,6 +88,76 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     return true;
   } catch (err) {
     console.error(`❌ Email failed for ${to}:`, err.message);
+    return false;
+  }
+};
+
+/**
+ * Send an email when application status changes
+ */
+const sendStatusUpdateEmail = async ({ to, candidateName, jobTitle, companyName, oldStatus, newStatus }) => {
+  try {
+    const transporter = getTransporter();
+    
+    // Format Status nicely
+    const safeStatus = (newStatus || '').toUpperCase();
+    const verb = safeStatus === 'REJECTED' ? 'declined' : safeStatus === 'HIRED' ? 'hired' : safeStatus === 'SHORTLISTED' ? 'shortlisted' : 'updated';
+    const messagePart = safeStatus === 'HIRED' 
+      ? 'Congratulations! You have been hired. The company will reach out for next steps.'
+      : safeStatus === 'SHORTLISTED' || safeStatus === 'INTERVIEW' || safeStatus === 'EXAM'
+      ? `Congratulations! Your application has been moved to the <strong>${safeStatus}</strong> stage. Keep an eye out for further instructions.`
+      : safeStatus === 'REJECTED'
+      ? `Unfortunately, the company has decided to move forward with other candidates at this time. Keep applying, don't give up!`
+      : `Your application status has been updated to <strong>${safeStatus}</strong>.`;
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f4f6;color:#111827;padding:0;margin:0}
+.outer{background:#f3f4f6;padding:32px 16px}
+.card{max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.05)}
+.header{background:${safeStatus === 'REJECTED' ? '#ef4444' : safeStatus === 'HIRED' ? '#10b981' : '#0055ff'};padding:28px 32px 24px}
+.header h1{font-size:22px;font-weight:800;color:#ffffff;margin:0}
+.body{padding:32px}
+.greeting{font-size:16px;line-height:1.6;color:#374151;margin-bottom:24px}
+.greeting strong{color:#111827}
+.job-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:24px;margin-bottom:24px;}
+.job-title{font-size:18px;font-weight:800;color:#111827;margin-bottom:6px}
+.company-name{font-size:14px;color:#6b7280;font-weight:600;}
+.footer{padding:0 32px 28px;font-size:12px;color:#6b7280;text-align:center;}
+</style>
+</head>
+<body>
+<div class="outer">
+<div class="card">
+  <div class="header">
+    <h1>Application Update</h1>
+  </div>
+  <div class="body">
+    <p class="greeting">Hey <strong>${candidateName || 'there'}</strong>,</p>
+    <p class="greeting" style="margin-bottom:12px">There's an update regarding your application for the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong>.</p>
+    <div class="job-card">
+      <p style="font-size:15px;color:#111827;line-height:1.6">${messagePart}</p>
+    </div>
+    <p style="font-size:14px;color:#4b5563;">Best regards,<br/>The NaukriQuest Team</p>
+  </div>
+  <div class="footer">NaukriQuest Notifications</div>
+</div>
+</div>
+</body></html>`;
+
+    await transporter.sendMail({
+      from: `"NaukriQuest Updates" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: `Application Update: ${jobTitle} at ${companyName}`,
+      html,
+    });
+    console.log(`📧 Status update email sent → ${to}`);
+    return true;
+  } catch (err) {
+    console.error(`❌ Status email failed for ${to}:`, err.message);
     return false;
   }
 };
@@ -156,4 +222,4 @@ const blastJobNotification = async (savedJob) => {
   }
 };
 
-module.exports = { sendJobNotificationEmail, blastJobNotification };
+module.exports = { sendJobNotificationEmail, sendStatusUpdateEmail, blastJobNotification };

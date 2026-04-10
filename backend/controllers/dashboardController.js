@@ -73,9 +73,55 @@ const getApplications = async (req, res) => {
 // ─── RECRUITER: Update application status ───────────────────────────────────
 const updateApplicationStatus = async (req, res) => {
   try {
-    const app = await Application.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+    const { status } = req.body;
+    const app = await Application.findByIdAndUpdate(req.params.id, { status }, { new: true })
+      .populate('jobId', 'title company')
+      .populate('candidateId', 'name email');
+
     res.json(app);
-  } catch (e) { res.status(500).json({ error: 'Failed to update status' }); }
+
+    // Run notifications asynchronously
+    if (app && app.candidateId && app.jobId) {
+      setImmediate(async () => {
+        try {
+          const { sendStatusUpdateEmail } = require('../services/emailService');
+          const Candidate = require('../models/Candidate');
+          
+          // In-app notification
+          await Candidate.findOneAndUpdate(
+            { $or: [{ userId: app.candidateId._id }, { email: app.candidateId.email }] },
+            {
+              $push: {
+                notifications: {
+                  message: `Your application status for "${app.jobId.title}" at ${app.jobId.company} has been updated to ${status}.`,
+                  jobId: app.jobId._id,
+                  read: false,
+                  createdAt: new Date(),
+                }
+              }
+            }
+          );
+
+          // Email
+          if (app.candidateId.email && status !== 'applied') {
+            await sendStatusUpdateEmail({
+              to: app.candidateId.email,
+              candidateName: app.candidateId.name,
+              jobTitle: app.jobId.title,
+              companyName: app.jobId.company,
+              newStatus: status
+            });
+          }
+        } catch (notifErr) {
+          console.error('Status update notification failed:', notifErr.message);
+        }
+      });
+    }
+
+  } catch (e) {
+    console.error('Status update error:', e);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
 };
 
 // ─── RECRUITER: Schedule interview/exam ─────────────────────────────────────

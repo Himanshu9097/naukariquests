@@ -64,6 +64,9 @@ export default function RecruiterDashboard() {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [candidateDetails, setCandidateDetails] = useState(null);
+  const [loadingCandidate, setLoadingCandidate] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [editJob, setEditJob] = useState(null);
@@ -128,6 +131,22 @@ export default function RecruiterDashboard() {
     } catch {}
     finally { setLoading(false); }
   }, [userId]);
+
+  const openCandidateProfile = async (candidateId) => {
+    setSelectedCandidate(candidateId);
+    setCandidateDetails(null);
+    setLoadingCandidate(true);
+    try {
+      const r = await fetch(`/api/profile/${candidateId}`);
+      if (r.ok) {
+        const d = await r.json();
+        setCandidateDetails(d);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingCandidate(false);
+  };
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -405,7 +424,7 @@ export default function RecruiterDashboard() {
                 <h2 className="text-lg font-black" style={{ color: T }}>Candidate Pipeline</h2>
                 <p className="text-xs mt-1" style={{ color: TM }}>Update states and advance candidates directly from here.</p>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pb-32">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="text-[10px] uppercase font-black tracking-widest text-opacity-50" style={{ color: TM, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
@@ -425,7 +444,7 @@ export default function RecruiterDashboard() {
                               <div className="w-10 h-10 flex shrink-0 items-center justify-center rounded-[14px] font-bold text-white text-sm shadow-md" style={{ background: 'linear-gradient(135deg, #00d4ff, #007bff)' }}>
                                 {(app.candidateId?.name || 'U').charAt(0).toUpperCase()}
                               </div>
-                              <div>
+                              <div className="cursor-pointer hover:underline" onClick={() => openCandidateProfile(app.candidateId?._id)}>
                                 <p className="font-bold whitespace-nowrap" style={{ color: T }}>{app.candidateId?.name || 'Applicant'}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <p className="text-[11px] truncate w-40" style={{ color: TM }}>{app.candidateId?.email}</p>
