@@ -150,21 +150,82 @@ const analyzeResume = async (req, res) => {
     result.field_courses = COURSE_DB[result.predicted_field] || [];
     result.recommended_skills = RECOMMENDED_SKILLS[result.predicted_field] || [];
 
-    const dbJobs = await Job.find({}).limit(50);
-    const userSkills = (result.skills || []).map(s => s.toLowerCase());
-    
-    result.matchedJobs = dbJobs.map(j => {
-      const jobSkills = (j.skills || []).map(s => s.toLowerCase());
-      const matches = jobSkills.filter(s => userSkills.includes(s));
-      const matchPct = jobSkills.length > 0 ? (matches.length / jobSkills.length) * 100 : 60;
-      const finalScore = Math.min(Math.floor(matchPct + (targetJob && j.title.toLowerCase().includes(targetJob.toLowerCase()) ? 30 : 0)), 98);
+    // Build a query from the target job or predicted field + top skills
+    const searchQuery = targetJob || result.predicted_field || (result.skills || [])[0] || 'software engineer';
+    const encodedQ = encodeURIComponent(searchQuery);
+
+    // Scrape LinkedIn global jobs — same logic as jobController.searchJobs
+    try {
+      const axios = require('axios');
+      const cheerio = require('cheerio');
+      console.log(`[Resume Analyze] Global scan for -> "${searchQuery}"`);
       
+      const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodedQ}&location=Worldwide&f_TPR=r604800&start=0`;
+      const { data: html } = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        }
+      });
+
+      const $ = cheerio.load(html);
+      const externalJobs = [];
+      $('.job-search-card').each((_, el) => {
+        const title    = $(el).find('.base-search-card__title').text().trim();
+        const company  = $(el).find('.base-search-card__subtitle').text().trim();
+        const location = $(el).find('.job-search-card__location').text().trim();
+        const jobUrl   = $(el).find('.base-card__full-link').attr('href');
+        if (title && company) externalJobs.push({ title, company, location, jobUrl: jobUrl ? jobUrl.split('?')[0] : '' });
+      });
+
+      // Seed fresh LinkedIn jobs into DB (skip duplicates)
+      for (const item of externalJobs.slice(0, 20)) {
+        const existing = await Job.findOne({ title: item.title, company: item.company });
+        if (!existing) {
+          await Job.create({
+            title: item.title,
+            company: item.company,
+            recruiterId: new (require('mongoose').Types.ObjectId)(),
+            location: item.location || 'Remote',
+            description: 'Full remote or onsite opportunity available directly through external application.',
+            type: 'Full-time',
+            salary: 'Not Disclosed',
+            skills: [searchQuery],
+            apply_link: item.jobUrl || '',
+          });
+        }
+      }
+    } catch (scrapeErr) {
+      console.warn('[Resume Analyze] LinkedIn scan failed (fallback to DB):', scrapeErr.message);
+    }
+
+    // Now score all DB jobs (includes freshly seeded LinkedIn ones)
+    const dbJobs = await Job.find({}).limit(100);
+    const userSkills = (result.skills || []).map(s => s.toLowerCase());
+    const userTerms  = [...userSkills, searchQuery.toLowerCase()];
+
+    result.matchedJobs = dbJobs.map(j => {
+      const jobSkills = [...(j.skills || []), ...(j.requiredSkills || [])].map(s => s.toLowerCase());
+      const jobText   = [j.title || '', j.description || '', j.company || '', ...jobSkills].join(' ').toLowerCase();
+      let score = 0;
+      userTerms.forEach(term => { if (term && jobText.includes(term)) score++; });
+      // Strong title boost
+      if ((j.title || '').toLowerCase().includes(searchQuery.toLowerCase())) score += 5;
+      const matches = jobSkills.filter(s => userSkills.includes(s));
+      return { job: j, score, matches };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map(({ job, score, matches }) => {
+      const maxScore = 10;
+      const pct = Math.min(Math.max(Math.round((score / maxScore) * 60) + 40, 50), 98);
       return {
-        ...j.toObject(),
-        match_score: `${finalScore}%`,
-        why_match: matches.length > 0 ? `Matches ${matches.slice(0, 2).join(', ')} skills.` : 'Matches your industry profile.'
+        ...job.toObject(),
+        match_score: `${pct}%`,
+        source: job.apply_link ? 'LinkedIn Global' : 'NaukriQuest',
+        why_match: matches.length > 0 ? `Matches: ${matches.slice(0, 3).join(', ')}` : `Relevant to "${searchQuery}"`,
       };
-    }).sort((a,b) => parseInt(b.match_score) - parseInt(a.match_score)).slice(0, 5);
+    });
 
     await new ResumeAnalysis({ ...result, file_url: fileUrl }).save();
     res.json(result);
