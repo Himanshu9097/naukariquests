@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const textPrimary = isDark ? '#ffffff' : '#0a0f1e';
@@ -47,16 +46,10 @@ export default function LoginPage() {
         else setLocation('/candidate');
         
       } else {
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('email', email);
-        formData.append('password', password);
-        formData.append('role', role);
-        if (file) formData.append('profilePic', file);
-
         const res = await fetch('/api/auth/register', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -122,13 +115,6 @@ export default function LoginPage() {
               <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full text-sm px-4 py-3 rounded-xl outline-none transition-all" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff', border: `1px solid ${surfaceBorder}`, color: textPrimary }} />
             </div>
 
-            {!isLogin && (
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: textMuted }}>Profile Picture (ImageKit)</label>
-                <input type="file" onChange={(e) => setFile(e.target.files[0])} accept="image/*" className="w-full text-sm px-4 py-3 rounded-xl outline-none transition-all" style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff', border: `1px solid ${surfaceBorder}`, color: textPrimary }} />
-              </div>
-            )}
-            
             <button type="submit" disabled={loading} className="w-full mt-4 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50" style={{ background: !isLogin && role === 'company' ? '#bf5af2' : '#00d4ff', color: !isLogin && role === 'company' ? '#ffffff' : '#000000' }}>
               {loading ? 'Processing...' : (isLogin ? 'Sign In' : `Sign Up as ${role === 'company' ? 'Company' : 'Candidate'}`)} <ArrowRight size={16} />
             </button>

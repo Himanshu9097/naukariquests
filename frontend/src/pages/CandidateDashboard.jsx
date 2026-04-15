@@ -40,7 +40,7 @@ export default function CandidateDashboard() {
 
   const userRole = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null;
   const userName = typeof window !== 'undefined' ? localStorage.getItem('userName') : null;
-  const userId   = typeof window !== 'undefined' ? (localStorage.getItem('userId') || 'demo') : 'demo';
+  const userId   = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
   const [stats, setStats] = useState({});
   const [applications, setApplications] = useState([]);
@@ -115,6 +115,22 @@ export default function CandidateDashboard() {
   const candidateId = userId;
 
   const fetchAll = useCallback(async () => {
+    if (!candidateId) {
+      setStats({
+        totalApps: 0,
+        shortlisted: 0,
+        interviews: 0,
+        hired: 0,
+        analysisCount: 0,
+        latestAtsScore: null,
+        jobFitScore: 0,
+      });
+      setApplications([]);
+      setSchedules([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const [sRes, aRes, scRes] = await Promise.all([

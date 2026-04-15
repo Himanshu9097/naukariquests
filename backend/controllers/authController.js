@@ -31,6 +31,13 @@ const register = async (req, res) => {
     const newUser = new User({ name, email, password, role, profilePic: profilePicUrl });
     await newUser.save();
 
+    const { sendWelcomeEmail } = require('../services/emailService');
+    setImmediate(() => {
+      sendWelcomeEmail({ to: email, name, role }).catch((err) => {
+        console.error('Welcome email trigger failed:', err.message);
+      });
+    });
+
     res.status(201).json({ message: 'User registered successfully', user: { email, role, name, profilePic: profilePicUrl } });
   } catch (error) {
     console.error('Registration failed', error);

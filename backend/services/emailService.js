@@ -13,6 +13,78 @@ const getTransporter = () => {
   });
 };
 
+const sendWelcomeEmail = async ({ to, name, role }) => {
+  try {
+    if (!process.env.EMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn('Welcome email skipped: missing EMAIL_USER or GMAIL_APP_PASSWORD');
+      return false;
+    }
+
+    const transporter = getTransporter();
+    const roleLabel = role === 'company' ? 'Recruiter' : 'Candidate';
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f4f6;color:#111827;padding:0;margin:0}
+.outer{background:#f3f4f6;padding:32px 16px}
+.card{max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.05)}
+.header{background:#0055ff;padding:28px 32px 24px}
+.header h1{font-size:24px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;margin:0}
+.header p{margin-top:8px;font-size:14px;color:rgba(255,255,255,0.9)}
+.body{padding:32px}
+.greeting{font-size:16px;line-height:1.7;color:#374151;margin-bottom:18px}
+.panel{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin:24px 0}
+.badge{display:inline-block;font-size:12px;font-weight:700;color:#0055ff;background:#eaf1ff;padding:6px 10px;border-radius:999px;margin-bottom:12px}
+.cta{display:inline-block;text-align:center;background:#0055ff;color:#ffffff !important;text-decoration:none;font-weight:700;font-size:15px;padding:14px 24px;border-radius:8px;margin-top:8px}
+.footer{padding:0 32px 28px;font-size:12px;color:#6b7280;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="outer">
+<div class="card">
+  <div class="header">
+    <h1>Welcome to NaukriQuest AI</h1>
+    <p>Your account is ready. Let's get your career flow moving.</p>
+  </div>
+  <div class="body">
+    <p class="greeting">Hi <strong>${name || 'there'}</strong>,</p>
+    <p class="greeting">Thanks for signing up as a <strong>${roleLabel}</strong>. Your NaukriQuest AI account has been created successfully.</p>
+    <div class="panel">
+      <span class="badge">${roleLabel} Account</span>
+      <p class="greeting" style="margin-bottom:0">
+        ${role === 'company'
+          ? 'Post jobs, manage applicants, and track your hiring pipeline from one dashboard.'
+          : 'Search jobs, track applications, improve your resume, and get personalized career updates.'}
+      </p>
+    </div>
+    <a href="https://naukariquests.vercel.app/login" class="cta">Open NaukriQuest</a>
+  </div>
+  <div class="footer">
+    NaukriQuest AI<br/>
+    You received this email because a new account was created with this address.
+  </div>
+</div>
+</div>
+</body></html>`;
+
+    await transporter.sendMail({
+      from: `"NaukriQuest AI" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: 'Welcome to NaukriQuest AI',
+      html,
+    });
+
+    console.log(`📧 Welcome email sent → ${to}`);
+    return true;
+  } catch (err) {
+    console.error(`❌ Welcome email failed for ${to}:`, err.message);
+    return false;
+  }
+};
+
 /**
  * Send a job alert email to a single candidate
  */
@@ -222,4 +294,4 @@ const blastJobNotification = async (savedJob) => {
   }
 };
 
-module.exports = { sendJobNotificationEmail, sendStatusUpdateEmail, blastJobNotification };
+module.exports = { sendWelcomeEmail, sendJobNotificationEmail, sendStatusUpdateEmail, blastJobNotification };

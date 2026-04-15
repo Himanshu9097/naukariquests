@@ -12,6 +12,10 @@ function getRecruiterFilter(req) {
   return {};
 }
 
+function getValidCandidateId(candidateId) {
+  return candidateId && mongoose.isValidObjectId(candidateId) ? candidateId : null;
+}
+
 // ─── RECRUITER: Get my posted jobs ──────────────────────────────────────────
 const getRecruiterJobs = async (req, res) => {
   try {
@@ -207,9 +211,12 @@ const applyForJob = async (req, res) => {
 const getCandidateApplications = async (req, res) => {
   try {
     const { candidateId } = req.params;
-    const mongoose = require('mongoose');
-    const isValid = mongoose.Types.ObjectId.isValid(candidateId);
-    const filter = isValid ? { candidateId } : {};
+    const validCandidateId = getValidCandidateId(candidateId);
+    if (!validCandidateId) {
+      return res.json([]);
+    }
+
+    const filter = { candidateId: validCandidateId };
     const apps = await Application.find(filter)
       .populate('jobId', 'title company location salary type')
       .sort({ createdAt: -1 });
@@ -221,9 +228,20 @@ const getCandidateApplications = async (req, res) => {
 const getCandidateStats = async (req, res) => {
   try {
     const { candidateId } = req.params;
-    const mongoose = require('mongoose');
-    const isValid = mongoose.Types.ObjectId.isValid(candidateId);
-    const filter = isValid ? { candidateId } : {};
+    const validCandidateId = getValidCandidateId(candidateId);
+    if (!validCandidateId) {
+      return res.json({
+        totalApps: 0,
+        shortlisted: 0,
+        interviews: 0,
+        hired: 0,
+        analysisCount: 0,
+        latestAtsScore: null,
+        jobFitScore: 0,
+      });
+    }
+
+    const filter = { candidateId: validCandidateId };
     const totalApps = await Application.countDocuments(filter);
     const shortlisted = await Application.countDocuments({ ...filter, status: 'shortlisted' });
     const interviews = await Application.countDocuments({ ...filter, status: 'interview' });
@@ -232,7 +250,7 @@ const getCandidateStats = async (req, res) => {
     const latestAnalysis = await ResumeAnalysis.findOne().sort({ createdAt: -1 });
     
     const User = require('../models/User');
-    const user = await User.findById(candidateId).select('jobFitScore');
+    const user = await User.findById(validCandidateId).select('jobFitScore');
     const jobFitScore = user?.jobFitScore || 0;
 
     res.json({ 
@@ -247,12 +265,13 @@ const getCandidateStats = async (req, res) => {
 const getCandidateSchedules = async (req, res) => {
   try {
     const { candidateId } = req.params;
-    if (!candidateId || !mongoose.isValidObjectId(candidateId)) {
+    const validCandidateId = getValidCandidateId(candidateId);
+    if (!validCandidateId) {
       return res.json([]);
     }
 
     // Find jobs the candidate explicitly applied for
-    const apps = await Application.find({ candidateId }).select('jobId');
+    const apps = await Application.find({ candidateId: validCandidateId }).select('jobId');
     const appliedJobIds = apps.map(app => app.jobId);
 
     // Find schedules where:
@@ -262,7 +281,7 @@ const getCandidateSchedules = async (req, res) => {
       status: 'scheduled', 
       date: { $gte: new Date() },
       $or: [
-        { candidates: candidateId },
+        { candidates: validCandidateId },
         { candidates: { $size: 0 }, jobId: { $in: appliedJobIds } },
         { candidates: { $exists: false }, jobId: { $in: appliedJobIds } },
       ]
