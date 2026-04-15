@@ -124,9 +124,9 @@ export default function ResumeMatchPage() {
   const fileInputRef = useRef(null);
 
   const T  = isDark ? '#fff'                        : '#0a0f1e';
-  const TM = isDark ? 'rgba(255,255,255,0.42)'      : 'rgba(10,15,30,0.45)';
-  const SB = isDark ? 'rgba(255,255,255,0.03)'      : 'rgba(255,255,255,0.9)';
-  const SBR= isDark ? 'rgba(255,255,255,0.07)'      : 'rgba(0,0,0,0.08)';
+  const TM = isDark ? 'rgba(255,255,255,0.42)'      : 'rgba(10,15,30,0.55)';
+  const SB = isDark ? 'rgba(255,255,255,0.03)'      : '#ffffff';
+  const SBR= isDark ? 'rgba(255,255,255,0.07)'      : 'rgba(0,0,0,0.12)';
   const PBG= isDark ? '#000'                        : '#f0f4f8';
 
   const getResumeData = useCallback(async () => {
@@ -256,7 +256,7 @@ export default function ResumeMatchPage() {
                 <textarea value={pastedText} onChange={e => setPastedText(e.target.value)}
                   placeholder="Paste your complete resume text here..." rows={9}
                   className="w-full p-4 rounded-xl outline-none resize-none text-sm leading-relaxed"
-                  style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', border: `1.5px solid ${SBR}`, color: T }} />
+                  style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9', border: `1.5px solid ${SBR}`, color: T }} />
               )}
 
               {/* Inputs */}
@@ -266,14 +266,14 @@ export default function ResumeMatchPage() {
                   <input value={targetJob} onChange={e => setTargetJob(e.target.value)}
                     placeholder="Target job role (e.g. React Developer)"
                     className="w-full pl-9 pr-4 py-3 rounded-xl outline-none text-sm"
-                    style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', border: `1.5px solid ${SBR}`, color: T }} />
+                    style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9', border: `1.5px solid ${SBR}`, color: T }} />
                 </div>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs opacity-40" style={{ color: T }}>🔗</span>
                   <input value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)}
                     placeholder="LinkedIn URL (optional)"
                     className="w-full pl-9 pr-4 py-3 rounded-xl outline-none text-sm"
-                    style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', border: `1.5px solid ${SBR}`, color: T }} />
+                    style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9', border: `1.5px solid ${SBR}`, color: T }} />
                 </div>
               </div>
 

@@ -20,6 +20,7 @@ const CandidateSchema = new mongoose.Schema({
   github: { type: String },
   education: { type: String },
   ats_score: { type: Number },
+  avatarUrl: { type: String },       // ImageKit URL for profile photo
   resumeUrl: { type: String },       // ImageKit URL
   resumeText: { type: String },      // Extracted raw text for matching
   jobFitScore: { type: Number, default: 0 },

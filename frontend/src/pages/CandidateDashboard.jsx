@@ -19,7 +19,7 @@ const STATUS_COLORS = {
 function StatCard({ icon: Icon, label, value, color, isDark, subtitle }) {
   return (
     <div className="relative p-6 rounded-3xl transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl overflow-hidden group" 
-         style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)'}` }}>
+         style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#fff', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)'}` }}>
       <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-20 blur-3xl transition-all duration-500 group-hover:scale-150" style={{ background: color }} />
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110" style={{ background: `${color}15` }}>
         <Icon size={20} style={{ color }} />
@@ -54,9 +54,9 @@ export default function CandidateDashboard() {
   const [testScore, setTestScore] = useState(0);
 
   const T  = isDark ? '#fff' : '#0a0f1e';
-  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.45)';
+  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.55)';
   const SB = isDark ? 'rgba(255,255,255,0.03)' : '#fff';
-  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)';
 
   if (userRole === 'company') {
     return (
@@ -120,7 +120,7 @@ export default function CandidateDashboard() {
       const [sRes, aRes, scRes] = await Promise.all([
         fetch(`/api/dashboard/candidate/${candidateId}/stats`),
         fetch(`/api/dashboard/candidate/${candidateId}/applications`),
-        fetch('/api/dashboard/candidate/schedules'),
+        fetch(`/api/dashboard/candidate/${candidateId}/schedules`),
       ]);
       setStats(await sRes.json());
       setApplications(await aRes.json());

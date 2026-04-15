@@ -25,7 +25,7 @@ router.delete('/recruiter/schedules/:id', deleteSchedule);
 router.post('/candidate/apply', applyForJob);
 router.get('/candidate/:candidateId/applications', getCandidateApplications);
 router.get('/candidate/:candidateId/stats', getCandidateStats);
-router.get('/candidate/schedules', getCandidateSchedules);
+router.get('/candidate/:candidateId/schedules', getCandidateSchedules);
 router.post('/candidate/:candidateId/mocktest', submitMockTest);
 router.get('/candidate/mocktest/questions/:type', getMockTestQuestions);
 

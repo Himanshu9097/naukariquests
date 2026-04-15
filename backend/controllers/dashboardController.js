@@ -64,7 +64,7 @@ const getApplications = async (req, res) => {
     
     const apps = await Application.find(filter.recruiterId ? { jobId: { $in: jobIds } } : {})
       .populate('jobId', 'title company location')
-      .populate('candidateId', 'name email jobFitScore')
+      .populate('candidateId', 'name email jobFitScore avatarUrl resumeUrl')
       .sort({ createdAt: -1 });
     res.json(apps);
   } catch (e) { res.status(500).json({ error: 'Failed to fetch applications' }); }
@@ -255,10 +255,17 @@ const getCandidateSchedules = async (req, res) => {
     const apps = await Application.find({ candidateId }).select('jobId');
     const appliedJobIds = apps.map(app => app.jobId);
 
+    // Find schedules where:
+    // 1. The candidate is explicitly in the candidates array, OR
+    // 2. The candidates array is empty (legacy/all-applicants) AND the candidate applied for that job
     const schedules = await Schedule.find({ 
-      jobId: { $in: appliedJobIds },
       status: 'scheduled', 
-      date: { $gte: new Date() } 
+      date: { $gte: new Date() },
+      $or: [
+        { candidates: candidateId },
+        { candidates: { $size: 0 }, jobId: { $in: appliedJobIds } },
+        { candidates: { $exists: false }, jobId: { $in: appliedJobIds } },
+      ]
     })
       .populate('jobId', 'title company')
       .sort({ date: 1 });

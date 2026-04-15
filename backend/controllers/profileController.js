@@ -41,15 +41,22 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, phone, title, experience, skills, summary, linkedin, github, education } = req.body;
+    const { name, phone, title, experience, skills, summary, linkedin, github, education, avatarUrl } = req.body;
 
     // Update User name
     if (name) await User.findByIdAndUpdate(userId, { name });
 
     // Upsert Candidate profile
+    const updateFields = {
+      userId, name, phone, title, experience,
+      skills: Array.isArray(skills) ? skills : (skills ? skills.split(',').map(s => s.trim()) : []),
+      summary, linkedin, github, education,
+    };
+    if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
+
     const candidate = await Candidate.findOneAndUpdate(
       { userId },
-      { userId, name, phone, title, experience, skills: Array.isArray(skills) ? skills : (skills ? skills.split(',').map(s => s.trim()) : []), summary, linkedin, github, education },
+      updateFields,
       { new: true, upsert: true }
     );
 
@@ -59,6 +66,45 @@ const updateProfile = async (req, res) => {
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
+
+// ── POST /api/profile/:userId/avatar ─────────────────────────────────────────
+// Upload profile photo → ImageKit → save URL on Candidate
+const uploadAvatar = [
+  upload.single('avatar'),
+  async (req, res) => {
+    const { userId } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No image provided' });
+
+    // Validate it is actually an image
+    if (!req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ error: 'Only image files are allowed' });
+    }
+
+    try {
+      const imagekit = getImageKit();
+      const uploaded = await imagekit.upload({
+        file: req.file.buffer,
+        fileName: `avatar_${userId}_${Date.now()}${require('path').extname(req.file.originalname)}`,
+        folder: '/avatars',
+      });
+
+      const avatarUrl = uploaded.url;
+
+      // Upsert candidate record with new avatar URL
+      const candidate = await Candidate.findOneAndUpdate(
+        { userId },
+        { $set: { avatarUrl } },
+        { new: true, upsert: true }
+      );
+
+      res.json({ message: 'Avatar uploaded', avatarUrl, candidate });
+    } catch (e) {
+      console.error('Avatar upload error:', e);
+      res.status(500).json({ error: 'Avatar upload failed: ' + e.message });
+    }
+  }
+];
+
 
 // ── POST /api/profile/:userId/resume ─────────────────────────────────────────
 // Upload resume → extract text → parse with AI → auto-fill profile
@@ -303,4 +349,5 @@ const markNotificationsRead = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, uploadResume, getRecommendations, getNotifications, markNotificationsRead };
+module.exports = { getProfile, updateProfile, uploadAvatar, uploadResume, getRecommendations, getNotifications, markNotificationsRead };
+

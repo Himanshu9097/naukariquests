@@ -19,9 +19,9 @@ export default function AssessmentsPage() {
   const [testComplete, setTestComplete] = useState(null);
 
   const T  = isDark ? '#fff' : '#0a0f1e';
-  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.45)';
+  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.55)';
   const SB = isDark ? 'rgba(255,255,255,0.03)' : '#fff';
-  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)';
 
   if (userRole !== 'candidate' && userRole) {
     return (

@@ -40,14 +40,14 @@ const COURSE_DB = {
 };
 
 const FIELD_KEYWORDS = {
-  'Data Science':        ['tensorflow', 'keras', 'pytorch', 'machine learning', 'deep learning', 'pandas', 'numpy', 'data science'],
-  'Web Development':     ['react', 'django', 'node', 'nodejs', 'javascript', 'html', 'css', 'typescript'],
+  'Data Science': ['tensorflow', 'keras', 'pytorch', 'machine learning', 'deep learning', 'pandas', 'numpy', 'data science'],
+  'Web Development': ['react', 'django', 'node', 'nodejs', 'javascript', 'html', 'css', 'typescript'],
   'Android Development': ['android', 'flutter', 'kotlin', 'java', 'firebase'],
 };
 
 const RECOMMENDED_SKILLS = {
-  'Data Science':        ['Data Visualization', 'ML Algorithms', 'Tensorflow', 'Streamlit'],
-  'Web Development':     ['React', 'Node JS', 'TypeScript', 'REST APIs'],
+  'Data Science': ['Data Visualization', 'ML Algorithms', 'Tensorflow', 'Streamlit'],
+  'Web Development': ['React', 'Node JS', 'TypeScript', 'REST APIs'],
   'Android Development': ['Android', 'Flutter', 'Kotlin', 'Firebase'],
 };
 
@@ -105,9 +105,9 @@ const extractResume = [
       let text = '';
       const mimetype = req.file.mimetype;
       const fileName = req.file.originalname.toLowerCase();
-      
+
       if (mimetype === 'application/pdf' || fileName.endsWith('.pdf')) {
-        const pdfParse = require('pdf-parse');
+        const pdfParse = require('pdf-parse');        
         const data = await pdfParse(req.file.buffer);
         text = data.text;
       } else if (mimetype.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
@@ -121,9 +121,9 @@ const extractResume = [
       const imagekit = getImageKit();
       const up = await imagekit.upload({ file: req.file.buffer, fileName: req.file.originalname, folder: '/resumes' });
       res.json({ text: text.trim().slice(0, 8000), fileUrl: up.url });
-    } catch (err) { 
+    } catch (err) {
       console.error('Extraction error:', err);
-      res.status(500).json({ error: 'Extraction failed' }); 
+      res.status(500).json({ error: 'Extraction failed' });
     }
   }
 ];
@@ -143,13 +143,13 @@ const analyzeResume = async (req, res) => {
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' }
     });
-    
+
     let raw = comp.choices[0].message.content || '{}';
     raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const start = raw.indexOf('{');
     const end = raw.lastIndexOf('}') + 1;
     const result = JSON.parse(start >= 0 ? raw.slice(start, end) : raw);
-    
+
     result.ats_score = calculateATSScore(text, targetJob, result);
     result.section_tips = getAnalysisDetails(text);
     result.candidate_level = getCandidateLevel(result.experience);
@@ -166,7 +166,7 @@ const analyzeResume = async (req, res) => {
       const axios = require('axios');
       const cheerio = require('cheerio');
       console.log(`[Resume Analyze] Global scan for -> "${searchQuery}"`);
-      
+
       const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodedQ}&location=Worldwide&f_TPR=r604800&start=0`;
       const { data: html } = await axios.get(url, {
         headers: {
@@ -178,10 +178,10 @@ const analyzeResume = async (req, res) => {
       const $ = cheerio.load(html);
       const externalJobs = [];
       $('.job-search-card').each((_, el) => {
-        const title    = $(el).find('.base-search-card__title').text().trim();
-        const company  = $(el).find('.base-search-card__subtitle').text().trim();
+        const title = $(el).find('.base-search-card__title').text().trim();
+        const company = $(el).find('.base-search-card__subtitle').text().trim();
         const location = $(el).find('.job-search-card__location').text().trim();
-        const jobUrl   = $(el).find('.base-card__full-link').attr('href');
+        const jobUrl = $(el).find('.base-card__full-link').attr('href');
         if (title && company) externalJobs.push({ title, company, location, jobUrl: jobUrl ? jobUrl.split('?')[0] : '' });
       });
 
@@ -209,11 +209,11 @@ const analyzeResume = async (req, res) => {
     // Now score all DB jobs (includes freshly seeded LinkedIn ones)
     const dbJobs = await Job.find({}).limit(100);
     const userSkills = (result.skills || []).map(s => s.toLowerCase());
-    const userTerms  = [...userSkills, searchQuery.toLowerCase()];
+    const userTerms = [...userSkills, searchQuery.toLowerCase()];
 
     result.matchedJobs = dbJobs.map(j => {
       const jobSkills = [...(j.skills || []), ...(j.requiredSkills || [])].map(s => s.toLowerCase());
-      const jobText   = [j.title || '', j.description || '', j.company || '', ...jobSkills].join(' ').toLowerCase();
+      const jobText = [j.title || '', j.description || '', j.company || '', ...jobSkills].join(' ').toLowerCase();
       let score = 0;
       userTerms.forEach(term => { if (term && jobText.includes(term)) score++; });
       // Strong title boost
@@ -221,24 +221,24 @@ const analyzeResume = async (req, res) => {
       const matches = jobSkills.filter(s => userSkills.includes(s));
       return { job: j, score, matches };
     })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map(({ job, score, matches }) => {
-      const maxScore = 10;
-      const pct = Math.min(Math.max(Math.round((score / maxScore) * 60) + 40, 50), 98);
-      return {
-        ...job.toObject(),
-        match_score: `${pct}%`,
-        source: job.apply_link ? 'LinkedIn Global' : 'NaukriQuest',
-        why_match: matches.length > 0 ? `Matches: ${matches.slice(0, 3).join(', ')}` : `Relevant to "${searchQuery}"`,
-      };
-    });
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map(({ job, score, matches }) => {
+        const maxScore = 10;
+        const pct = Math.min(Math.max(Math.round((score / maxScore) * 60) + 40, 50), 98);
+        return {
+          ...job.toObject(),
+          match_score: `${pct}%`,
+          source: job.apply_link ? 'LinkedIn Global' : 'NaukriQuest',
+          why_match: matches.length > 0 ? `Matches: ${matches.slice(0, 3).join(', ')}` : `Relevant to "${searchQuery}"`,
+        };
+      });
 
     await new ResumeAnalysis({ ...result, file_url: fileUrl }).save();
     res.json(result);
-  } catch (err) { 
+  } catch (err) {
     console.error('Analysis error:', err);
-    res.status(500).json({ error: 'Analysis failed' }); 
+    res.status(500).json({ error: 'Analysis failed' });
   }
 };
 

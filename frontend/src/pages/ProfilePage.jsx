@@ -28,15 +28,18 @@ export default function ProfilePage() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef(null);
 
   // Theme tokens
-  const BG  = isDark ? '#000'                      : '#f0f4f8';
-  const SB  = isDark ? 'rgba(255,255,255,0.03)'    : '#ffffff';
-  const SBR = isDark ? 'rgba(255,255,255,0.08)'    : 'rgba(0,0,0,0.09)';
-  const T   = isDark ? '#ffffff'                    : '#0a0f1e';
-  const TM  = isDark ? 'rgba(255,255,255,0.45)'    : 'rgba(10,15,30,0.5)';
-  const IN  = isDark ? 'rgba(255,255,255,0.06)'    : 'rgba(0,0,0,0.04)';
-  const INB = isDark ? 'rgba(255,255,255,0.1)'     : 'rgba(0,0,0,0.1)';
+  const BG  = isDark ? '#000'                    : '#f0f4f8';
+  const SB  = isDark ? 'rgba(255,255,255,0.03)'  : '#ffffff';
+  const SBR = isDark ? 'rgba(255,255,255,0.08)'  : 'rgba(0,0,0,0.12)';
+  const T   = isDark ? '#ffffff'                  : '#0a0f1e';
+  const TM  = isDark ? 'rgba(255,255,255,0.45)'  : 'rgba(10,15,30,0.55)';
+  const IN  = isDark ? 'rgba(255,255,255,0.06)'  : '#f1f5f9';   // input bg
+  const INB = isDark ? 'rgba(255,255,255,0.12)'  : '#cbd5e1';   // input border
 
   useEffect(() => {
     if (!userId) return;
@@ -56,8 +59,9 @@ export default function ProfilePage() {
           education: d.education || '',
         });
         if (d.resumeUrl) setResumeUrl(d.resumeUrl);
+        if (d.avatarUrl) setAvatarUrl(d.avatarUrl);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetchNotifications();
   }, [userId]);
@@ -68,7 +72,7 @@ export default function ProfilePage() {
       const d = await r.json();
       setNotifications(d.notifications || []);
       setUnread((d.notifications || []).filter(n => !n.read).length);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const fetchRecommendations = async () => {
@@ -77,7 +81,7 @@ export default function ProfilePage() {
       const r = await fetch(`/api/profile/${userId}/recommendations`);
       const d = await r.json();
       setRecommendations(d.jobs || []);
-    } catch (_) {}
+    } catch (_) { }
     setLoadingRecs(false);
   };
 
@@ -109,7 +113,7 @@ export default function ProfilePage() {
         setUploadSuccess(true);
         setTimeout(() => setUploadSuccess(false), 4000);
       }
-    } catch (_) {}
+    } catch (_) { }
     setUploading(false);
   };
 
@@ -119,12 +123,27 @@ export default function ProfilePage() {
       await fetch(`/api/profile/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({ ...profile, avatarUrl }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (_) {}
+    } catch (_) { }
     setSaving(false);
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    setAvatarUploading(true);
+    const fd = new FormData();
+    fd.append('avatar', file);
+    try {
+      const r = await fetch(`/api/profile/${userId}/avatar`, { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.avatarUrl) setAvatarUrl(d.avatarUrl);
+    } catch (_) { }
+    setAvatarUploading(false);
   };
 
   const handleMarkRead = async () => {
@@ -137,6 +156,7 @@ export default function ProfilePage() {
     width: '100%', padding: '10px 14px', borderRadius: '10px',
     background: IN, border: `1px solid ${INB}`, color: T,
     fontSize: '13px', outline: 'none', transition: 'border-color 0.2s',
+    WebkitTextFillColor: T,   // fix autofill colour on Chrome
   };
 
   const labelStyle = { fontSize: '11px', fontWeight: 700, color: TM, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px', display: 'block' };
@@ -145,6 +165,7 @@ export default function ProfilePage() {
     { id: 'profile', label: 'Edit Profile', icon: <User size={14} /> },
     { id: 'recommendations', label: 'Recommended Jobs', icon: <Briefcase size={14} /> },
   ];
+
 
   return (
     <div className="min-h-screen" style={{ background: BG }}>
@@ -172,7 +193,7 @@ export default function ProfilePage() {
 
             {showNotifs && (
               <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl overflow-hidden shadow-2xl"
-                style={{ background: isDark ? 'rgba(10,12,20,0.98)' : '#fff', border: `1px solid ${SBR}`, backdropFilter: 'blur(24px)' }}>
+                style={{ background: isDark ? 'rgba(10,12,20,0.98)' : '#ffffff', border: `1px solid ${SBR}`, backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${SBR}` }}>
                   <span className="text-xs font-black" style={{ color: T }}>Notifications</span>
                   <button onClick={() => setShowNotifs(false)}><X size={14} style={{ color: TM }} /></button>
@@ -256,6 +277,56 @@ export default function ProfilePage() {
         {/* ── Edit Profile Tab ─────────────────────────────────────────────── */}
         {activeTab === 'profile' && (
           <div className="rounded-2xl p-6 space-y-5" style={{ background: SB, border: `1px solid ${SBR}` }}>
+
+            {/* ── Avatar Upload ───────────────── */}
+            <div className="flex flex-col items-center gap-3 pb-2">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Click to change profile photo"
+              >
+                <div
+                  className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden transition-all"
+                  style={{
+                    background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, #0077ff22, #00d4ff22)',
+                    border: `3px solid ${avatarUrl ? '#0077ff' : INB}`,
+                    boxShadow: avatarUrl ? '0 0 0 4px rgba(0,119,255,0.15)' : 'none',
+                  }}
+                >
+                  {avatarUploading ? (
+                    <Loader2 size={28} className="animate-spin" style={{ color: '#00d4ff' }} />
+                  ) : avatarUrl ? (
+                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={36} style={{ color: TM }} />
+                  )}
+                </div>
+                {/* Overlay on hover */}
+                <div
+                  className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ background: 'rgba(0,0,0,0.5)' }}
+                >
+                  <Upload size={18} style={{ color: '#fff' }} />
+                </div>
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+              <div className="text-center">
+                <p className="text-xs font-bold" style={{ color: T }}>
+                  {profile.name || 'Your Name'}
+                </p>
+                <p className="text-[10px] mt-0.5" style={{ color: TM }}>
+                  {avatarUrl ? 'Click photo to change' : 'Click to upload photo'}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Basic Info Grid ───────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { key: 'name', label: 'Full Name', placeholder: 'Himanshu Singh' },
@@ -279,6 +350,7 @@ export default function ProfilePage() {
               ))}
             </div>
 
+            {/* ── Skills ───────────────── */}
             <div>
               <label style={labelStyle}>Skills (comma-separated)</label>
               <input
@@ -291,6 +363,7 @@ export default function ProfilePage() {
               />
             </div>
 
+            {/* ── Summary ───────────────── */}
             <div>
               <label style={labelStyle}>Professional Summary</label>
               <textarea
@@ -304,40 +377,138 @@ export default function ProfilePage() {
               />
             </div>
 
+            {/* ── Social Inputs ───────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* LinkedIn */}
               <div>
-                <label style={labelStyle}><Linkedin size={10} className="inline mr-1" />LinkedIn URL</label>
+                <label style={labelStyle}>
+                  <Linkedin size={10} className="inline mr-1" />
+                  LinkedIn URL
+                </label>
+
                 <input
                   value={profile.linkedin || ''}
-                  onChange={e => setProfile(p => ({ ...p, linkedin: e.target.value }))}
-                  placeholder="https://linkedin.com/in/username"
+                  onChange={e => {
+                    let value = e.target.value.trim();
+
+                    // remove leading slash (fix localhost issue)
+                    value = value.replace(/^\/+/, "");
+
+                    setProfile(p => ({ ...p, linkedin: value }));
+                  }}
+                  placeholder="linkedin.com/in/username"
                   style={inputStyle}
                   onFocus={e => e.target.style.borderColor = '#0077b5'}
                   onBlur={e => e.target.style.borderColor = INB}
                 />
               </div>
+
+              {/* GitHub */}
               <div>
-                <label style={labelStyle}><Github size={10} className="inline mr-1" />GitHub URL</label>
+                <label style={labelStyle}>
+                  <Github size={10} className="inline mr-1" />
+                  GitHub URL
+                </label>
+
                 <input
                   value={profile.github || ''}
-                  onChange={e => setProfile(p => ({ ...p, github: e.target.value }))}
-                  placeholder="https://github.com/username"
+                  onChange={e => {
+                    let value = e.target.value.trim();
+
+                    // remove leading slash (fix localhost issue)
+                    value = value.replace(/^\/+/, "");
+
+                    setProfile(p => ({ ...p, github: value }));
+                  }}
+                  placeholder="github.com/username"
                   style={inputStyle}
                   onFocus={e => e.target.style.borderColor = '#bf5af2'}
                   onBlur={e => e.target.style.borderColor = INB}
                 />
               </div>
+
             </div>
 
+            {/* ── Social Links Preview ───────────────── */}
+            <div className="flex gap-3 mt-2 flex-wrap">
+
+              {/* LinkedIn */}
+              {profile.linkedin && (
+                <a
+                  href={
+                    profile.linkedin.startsWith("http")
+                      ? profile.linkedin
+                      : "https://" + profile.linkedin.replace(/^\/+/, "")
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition hover:scale-105"
+                  style={{
+                    background: 'rgba(0,119,181,0.1)',
+                    color: '#0077b5',
+                    border: '1px solid rgba(0,119,181,0.2)'
+                  }}
+                >
+                  <Linkedin size={14} />
+                  LinkedIn
+                </a>
+              )}
+
+              {/* GitHub */}
+              {profile.github && (
+                <a
+                  href={
+                    profile.github.startsWith("http")
+                      ? profile.github
+                      : "https://" + profile.github.replace(/^\/+/, "")
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition hover:scale-105"
+                  style={{
+                    background: 'rgba(191,90,242,0.1)',
+                    color: '#bf5af2',
+                    border: '1px solid rgba(191,90,242,0.2)'
+                  }}
+                >
+                  <Github size={14} />
+                  GitHub
+                </a>
+              )}
+
+            </div>
+
+            {/* ── Save Button ───────────────── */}
             <div className="flex justify-end pt-2">
-              <button onClick={handleSave} disabled={saving}
+              <button
+                onClick={handleSave}
+                disabled={saving}
                 className="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all hover:scale-[1.02]"
-                style={{ background: saved ? 'linear-gradient(135deg, #30d158, #00c7be)' : 'linear-gradient(135deg, #0077ff, #00d4ff)', color: '#fff', opacity: saving ? 0.7 : 1 }}>
-                {saving ? <><Loader2 size={14} className="animate-spin" /> Saving...</>
-                  : saved ? <><CheckCircle size={14} /> Saved!</>
-                  : <><Save size={14} /> Save Profile</>}
+                style={{
+                  background: saved
+                    ? 'linear-gradient(135deg, #30d158, #00c7be)'
+                    : 'linear-gradient(135deg, #0077ff, #00d4ff)',
+                  color: '#fff',
+                  opacity: saving ? 0.7 : 1
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Saving...
+                  </>
+                ) : saved ? (
+                  <>
+                    <CheckCircle size={14} /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} /> Save Profile
+                  </>
+                )}
               </button>
             </div>
+
           </div>
         )}
 

@@ -72,14 +72,15 @@ export default function RecruiterDashboard() {
   const [editJob, setEditJob] = useState(null);
   
   const initialJobForm = { title: '', company: '', location: '', salary: '', experience: '', type: 'Full-time', skills: '', description: '', apply_link: '' };
-  const initialScheduleForm = { type: 'interview', title: '', description: '', date: '', time: '', location: '', link: '', jobId: '' };
+  const initialScheduleForm = { type: 'interview', title: '', description: '', date: '', time: '', location: '', link: '', jobId: '', candidates: [] };
   const [jobForm, setJobForm] = useState(initialJobForm);
   const [scheduleForm, setScheduleForm] = useState(initialScheduleForm);
+  const [jobApplicants, setJobApplicants] = useState([]);
 
   const T  = isDark ? '#fff' : '#0a0f1e';
-  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.45)';
+  const TM = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(10,15,30,0.55)';
   const SB = isDark ? 'rgba(255,255,255,0.03)' : '#fff';
-  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const SBR= isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)';
 
   if (userRole !== 'company') {
     return (
@@ -174,7 +175,17 @@ export default function RecruiterDashboard() {
     await fetch('/api/dashboard/recruiter/schedules', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     setShowScheduleForm(false);
     setScheduleForm(initialScheduleForm);
+    setJobApplicants([]);
     fetchAll();
+  };
+
+  // Fetch applicants when a job is selected in the schedule form
+  const fetchJobApplicants = async (jobId) => {
+    if (!jobId) { setJobApplicants([]); return; }
+    try {
+      const appsForJob = apps.filter(a => String(a.jobId?._id) === String(jobId));
+      setJobApplicants(appsForJob);
+    } catch { setJobApplicants([]); }
   };
 
   const deleteSchedule = async (id) => {
@@ -182,7 +193,7 @@ export default function RecruiterDashboard() {
     fetchAll();
   };
 
-  const inputStyle = { background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: `1.5px solid ${SBR}`, color: T, transition: 'all 0.2s', focusOutline: '2px solid #bf5af2' };
+  const inputStyle = { background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', border: `1.5px solid ${SBR}`, color: T, transition: 'all 0.2s', focusOutline: '2px solid #bf5af2' };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: isDark ? '#000' : '#f0f4f8' }}>
@@ -274,8 +285,11 @@ export default function RecruiterDashboard() {
                       const sc = STATUS_COLORS[app.status] || STATUS_COLORS.applied;
                       return (
                         <div key={app._id} className="flex items-center gap-4 p-4 rounded-2xl transition hover:bg-black/5 dark:hover:bg-white/5" style={{ border: `1px solid ${SBR}` }}>
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm" style={{ background: 'linear-gradient(135deg, #00d4ff, #bf5af2)' }}>
-                            {(app.candidateId?.name || 'C').charAt(0).toUpperCase()}
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-bold text-white shadow-sm shrink-0" style={{ background: 'linear-gradient(135deg, #00d4ff, #bf5af2)' }}>
+                            {app.candidateId?.avatarUrl
+                              ? <img src={app.candidateId.avatarUrl} alt={app.candidateId?.name} className="w-full h-full object-cover" />
+                              : (app.candidateId?.name || 'C').charAt(0).toUpperCase()
+                            }
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-bold" style={{ color: T }}>{app.candidateId?.name || 'New Candidate'}</p>
@@ -441,8 +455,11 @@ export default function RecruiterDashboard() {
                         <tr key={app._id} className="border-b last:border-0 transition-colors hover:bg-black/5 dark:hover:bg-white/5" style={{ borderColor: SBR }}>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 flex shrink-0 items-center justify-center rounded-[14px] font-bold text-white text-sm shadow-md" style={{ background: 'linear-gradient(135deg, #00d4ff, #007bff)' }}>
-                                {(app.candidateId?.name || 'U').charAt(0).toUpperCase()}
+                              <div className="w-10 h-10 flex shrink-0 items-center justify-center rounded-[14px] font-bold text-white text-sm shadow-md overflow-hidden" style={{ background: 'linear-gradient(135deg, #00d4ff, #007bff)' }}>
+                                {app.candidateId?.avatarUrl
+                                  ? <img src={app.candidateId.avatarUrl} alt={app.candidateId?.name} className="w-full h-full object-cover" />
+                                  : (app.candidateId?.name || 'U').charAt(0).toUpperCase()
+                                }
                               </div>
                               <div className="cursor-pointer hover:underline" onClick={() => openCandidateProfile(app.candidateId?._id)}>
                                 <p className="font-bold whitespace-nowrap" style={{ color: T }}>{app.candidateId?.name || 'Applicant'}</p>
@@ -536,11 +553,83 @@ export default function RecruiterDashboard() {
                        <div className="absolute left-0 mt-1 w-full max-h-48 overflow-y-auto rounded-xl shadow-2xl z-50 animate-fade-in custom-scrollbar" style={{ background: isDark ? '#1a1a1a' : '#fff', border: `1px solid ${SBR}` }}>
                          {jobs.length === 0 && <div className="px-5 py-3 text-sm font-bold opacity-50" style={{ color: T }}>No jobs available</div>}
                          {jobs.map(j => (
-                           <div key={j._id} onClick={() => { setScheduleForm(p => ({ ...p, jobId: j._id })); setOpenDropdown(null); }} className="px-5 py-3 text-sm font-bold cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/10" style={{ color: T }}>{j.title}</div>
+                           <div key={j._id} onClick={() => { 
+                             setScheduleForm(p => ({ ...p, jobId: j._id, candidates: [] })); 
+                             setOpenDropdown(null); 
+                             fetchJobApplicants(j._id); 
+                           }} className="px-5 py-3 text-sm font-bold cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/10" style={{ color: T }}>{j.title}</div>
                          ))}
                        </div>
                     )}
                   </div>
+
+                  {/* ── Candidate Picker (shown after job is selected) ────── */}
+                  {scheduleForm.jobId && (
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: TM }}>Assign Candidates *</label>
+                      {jobApplicants.length === 0 ? (
+                        <div className="px-5 py-4 rounded-xl text-sm" style={inputStyle}>
+                          <span style={{ color: TM }}>No applicants for this job yet.</span>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl p-4 space-y-2 max-h-52 overflow-y-auto custom-scrollbar" style={{ ...inputStyle, padding: '16px' }}>
+                          {/* Select All */}
+                          <label className="flex items-center gap-3 pb-2 mb-2 cursor-pointer" style={{ borderBottom: `1px solid ${SBR}` }}>
+                            <input
+                              type="checkbox"
+                              checked={scheduleForm.candidates.length === jobApplicants.length && jobApplicants.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setScheduleForm(p => ({ ...p, candidates: jobApplicants.map(a => a.candidateId?._id).filter(Boolean) }));
+                                } else {
+                                  setScheduleForm(p => ({ ...p, candidates: [] }));
+                                }
+                              }}
+                              className="w-4 h-4 rounded accent-[#30d158]"
+                            />
+                            <span className="text-xs font-black uppercase tracking-wider" style={{ color: TM }}>Select All ({jobApplicants.length})</span>
+                          </label>
+                          {jobApplicants.map(a => {
+                            const cId = a.candidateId?._id;
+                            const isChecked = scheduleForm.candidates.includes(cId);
+                            return (
+                              <label key={a._id} className="flex items-center gap-3 py-1.5 cursor-pointer rounded-lg px-1 transition hover:bg-black/5 dark:hover:bg-white/5">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setScheduleForm(p => ({
+                                      ...p,
+                                      candidates: isChecked
+                                        ? p.candidates.filter(id => id !== cId)
+                                        : [...p.candidates, cId]
+                                    }));
+                                  }}
+                                  className="w-4 h-4 rounded accent-[#30d158]"
+                                />
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ background: 'linear-gradient(135deg, #00d4ff, #007bff)' }}>
+                                    {a.candidateId?.avatarUrl
+                                      ? <img src={a.candidateId.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                      : (a.candidateId?.name || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold truncate" style={{ color: T }}>{a.candidateId?.name || 'Applicant'}</p>
+                                    <p className="text-[10px] truncate" style={{ color: TM }}>{a.candidateId?.email}</p>
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {scheduleForm.candidates.length > 0 && (
+                        <p className="text-[10px] font-bold mt-1" style={{ color: '#30d158' }}>
+                          ✓ {scheduleForm.candidates.length} candidate{scheduleForm.candidates.length > 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: TM }}>Title *</label>
                     <input value={scheduleForm.title} onChange={e => setScheduleForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Round 1 Technical" className="w-full px-5 py-4 rounded-xl text-sm focus:ring-2 focus:ring-[#30d158] outline-none" style={inputStyle} />
                   </div>
@@ -638,9 +727,12 @@ export default function RecruiterDashboard() {
                 <div className="space-y-5">
                   {/* Identity */}
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shrink-0"
+                    <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-2xl font-black text-white shrink-0"
                          style={{ background: 'linear-gradient(135deg, #00d4ff, #0055ff)' }}>
-                      {(candidateDetails.name || 'U').charAt(0).toUpperCase()}
+                      {candidateDetails.avatarUrl
+                        ? <img src={candidateDetails.avatarUrl} alt={candidateDetails.name} className="w-full h-full object-cover" />
+                        : (candidateDetails.name || 'U').charAt(0).toUpperCase()
+                      }
                     </div>
                     <div>
                       <h3 className="text-xl font-black" style={{ color: T }}>{candidateDetails.name || '—'}</h3>
@@ -692,14 +784,22 @@ export default function RecruiterDashboard() {
                   {(candidateDetails.linkedin || candidateDetails.github) && (
                     <div className="flex gap-3 flex-wrap">
                       {candidateDetails.linkedin && (
-                        <a href={candidateDetails.linkedin} target="_blank" rel="noreferrer"
+                        <a href={
+                             candidateDetails.linkedin.startsWith('http')
+                               ? candidateDetails.linkedin
+                               : 'https://' + candidateDetails.linkedin.replace(/^\/+/, '')
+                           } target="_blank" rel="noreferrer"
                            className="text-xs font-bold px-4 py-2 rounded-xl"
                            style={{ background: 'rgba(0,119,181,0.1)', color: '#0077b5', border: '1px solid rgba(0,119,181,0.2)' }}>
                           🔗 LinkedIn
                         </a>
                       )}
                       {candidateDetails.github && (
-                        <a href={candidateDetails.github} target="_blank" rel="noreferrer"
+                        <a href={
+                             candidateDetails.github.startsWith('http')
+                               ? candidateDetails.github
+                               : 'https://' + candidateDetails.github.replace(/^\/+/, '')
+                           } target="_blank" rel="noreferrer"
                            className="text-xs font-bold px-4 py-2 rounded-xl"
                            style={{ background: 'rgba(191,90,242,0.1)', color: '#bf5af2', border: '1px solid rgba(191,90,242,0.2)' }}>
                           🐙 GitHub
